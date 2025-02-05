@@ -33,6 +33,8 @@ type AlpProjStartContFn = unsafe extern fn(ALP_ID, ALP_ID) -> c_long;
 type AlpProjHaltFn = unsafe extern fn(ALP_ID) -> c_long;
 type AlpProjInquireExFn = unsafe extern fn(ALP_ID, c_long, *mut tAlpProjProgress) -> c_long;
 type AlpProjInquireFn = unsafe extern fn(ALP_ID, c_long, *mut c_long) -> c_long;
+type AlpProjWaitFn = unsafe extern fn(ALP_ID) -> c_long;
+type AlpSeqTimingFn = unsafe extern fn(ALP_ID, ALP_ID, c_long, c_long, c_long, c_long, c_long) -> c_long;
 
 #[repr(i64)]
 #[derive(Copy, Clone, Debug, PartialEq, FromRepr)]
@@ -68,7 +70,7 @@ impl Error for AlpError {}
 
 
 
-type AlpResult<T> = Result<T, AlpError>;
+pub type AlpResult<T> = Result<T, AlpError>;
 
 
 
@@ -182,6 +184,10 @@ impl<'a> AlpDevice<'a> {
 
         Ok(val == ALP_PROJ_ACTIVE as c_long)
     }
+
+    pub fn wait(&self) -> AlpResult<()> {
+        alp_call!(self.lib, "AlpProjWait", AlpProjWaitFn; self.id)
+    }
 }
 
 
@@ -198,7 +204,7 @@ impl<'a> Drop for AlpSequence<'a> {
             .expect("couldn't get current ALP sequence ID");
 
         if current_seq == Some(self.id as u64) {
-            self.halt().expect("couldn't halt ALP device projection");
+            self.dev.halt().expect("couldn't halt ALP device projection");
         }
 
         alp_call!(self.lib, "AlpSeqFree", AlpSeqFreeFn; self.dev.id, self.id)
@@ -228,7 +234,11 @@ impl<'a> AlpSequence<'a> {
         )
     }
 
-    pub fn halt(&self) -> AlpResult<()> {
-        self.dev.halt()
+    pub fn set_picture_time(&self, time_us: usize) -> AlpResult<()> {
+        alp_call!(
+            self.lib, "AlpSeqTiming", AlpSeqTimingFn;
+            self.dev.id, self.id, ALP_DEFAULT as c_long, time_us as c_long,
+            ALP_DEFAULT as c_long, ALP_DEFAULT as c_long, ALP_DEFAULT as c_long
+        )
     }
 }
