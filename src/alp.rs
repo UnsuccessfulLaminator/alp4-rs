@@ -33,6 +33,7 @@ type AlpProjInquireExFn = unsafe extern fn(ALP_ID, c_long, *mut tAlpProjProgress
 type AlpProjInquireFn = unsafe extern fn(ALP_ID, c_long, *mut c_long) -> c_long;
 type AlpProjWaitFn = unsafe extern fn(ALP_ID) -> c_long;
 type AlpSeqTimingFn = unsafe extern fn(ALP_ID, ALP_ID, c_long, c_long, c_long, c_long, c_long) -> c_long;
+type AlpSeqControlFn = unsafe extern fn(ALP_ID, ALP_ID, c_long, c_long) -> c_long;
 
 
 
@@ -203,4 +204,52 @@ impl<'a> AlpSequence<'a> {
             ALP_DEFAULT as c_long, ALP_DEFAULT as c_long, ALP_DEFAULT as c_long
         )
     }
+
+    fn set_control(&self, control: Control, value: c_long) -> AlpResult<()> {
+        alp_call!(
+            self.lib, "AlpSeqControl", AlpSeqControlFn;
+            self.dev.id, self.id, control as c_long, value
+        )
+    }
+
+    pub fn set_data_format(&self, format: DataFormat) -> AlpResult<()> {
+        self.set_control(Control::DataFormat, format as c_long)
+    }
+}
+
+
+
+#[repr(i64)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DataFormat {
+    MsbAlign = ALP_DATA_MSB_ALIGN as i64,
+    LsbAlign = ALP_DATA_LSB_ALIGN as i64,
+    BinaryTopDown = ALP_DATA_BINARY_TOPDOWN as i64,
+    BinaryBottomUp = ALP_DATA_BINARY_BOTTOMUP as i64
+}
+
+
+
+#[allow(dead_code)]
+#[repr(i64)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Control {
+    SeqRepeat = ALP_SEQ_REPEAT as i64,
+    FirstFrame = ALP_FIRSTFRAME as i64,
+    LastFrame = ALP_LASTFRAME as i64,
+    BitNum = ALP_BITNUM as i64,
+    BinMode = ALP_BIN_MODE as i64,
+    DataFormat = ALP_DATA_FORMAT as i64,
+    SeqPutLock = ALP_SEQ_PUT_LOCK as i64,
+    ScrollFromRow = ALP_SCROLL_FROM_ROW as i64,
+    ScrollToRow = ALP_SCROLL_TO_ROW as i64,
+    FirstLine = ALP_FIRSTLINE as i64,
+    LastLine = ALP_LASTLINE as i64,
+    LineInc = ALP_LINE_INC as i64,
+    FlutMode = ALP_FLUT_MODE as i64,
+    FlutEntries9 = ALP_FLUT_ENTRIES9 as i64,
+    FlutOffset9 = ALP_FLUT_OFFSET9 as i64,
+    SeqLines = ALP_SEQ_DMD_LINES as i64,
+    PwmMode = ALP_PWM_MODE as i64,
+    MaskSelect = ALP_DMD_MASK_SELECT as i64
 }
