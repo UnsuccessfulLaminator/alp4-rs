@@ -1,5 +1,6 @@
 use crate::alp_binding::*;
 use crate::error::*;
+use crate::Bitplanes;
 use libloading::Library;
 use std::ffi::{OsStr, c_long};
 
@@ -180,7 +181,7 @@ impl<'a> AlpSequence<'a> {
         self.id as u64
     }
 
-    pub fn put(&self, offset: usize, n: usize, data: &[u8]) -> AlpResult<()> {
+    pub fn put_raw(&self, offset: usize, n: usize, data: &[u8]) -> AlpResult<()> {
         let offset = offset as c_long;
         let n = n as c_long;
 
@@ -188,6 +189,12 @@ impl<'a> AlpSequence<'a> {
             self.lib, "AlpSeqPut", AlpSeqPutFn;
             self.dev.id, self.id, offset, n, data.as_ptr()
         )
+    }
+
+    pub fn put_planes<D>(&self, offset: usize, planes: &Bitplanes<D>)
+    -> AlpResult<()> where D: AsRef<[u8]> {
+        self.set_data_format(DataFormat::BinaryTopDown)?;
+        self.put_raw(offset, planes.planes(), planes)
     }
 
     pub fn start_cont(&self) -> AlpResult<()> {
