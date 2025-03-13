@@ -29,6 +29,7 @@ type AlpSeqAllocFn = unsafe extern fn(ALP_ID, c_long, c_long, *mut ALP_ID) -> c_
 type AlpSeqFreeFn = unsafe extern fn(ALP_ID, ALP_ID) -> c_long;
 type AlpSeqPutFn = unsafe extern fn(ALP_ID, ALP_ID, c_long, c_long, *const u8) -> c_long;
 type AlpProjStartContFn = unsafe extern fn(ALP_ID, ALP_ID) -> c_long;
+type AlpProjStartFn = unsafe extern fn(ALP_ID, ALP_ID) -> c_long;
 type AlpProjHaltFn = unsafe extern fn(ALP_ID) -> c_long;
 type AlpProjInquireExFn = unsafe extern fn(ALP_ID, c_long, *mut tAlpProjProgress) -> c_long;
 type AlpProjInquireFn = unsafe extern fn(ALP_ID, c_long, *mut c_long) -> c_long;
@@ -202,6 +203,17 @@ impl<'a> AlpSequence<'a> {
             self.lib, "AlpProjStartCont", AlpProjStartContFn;
             self.dev.id, self.id
         )
+    }
+    
+    pub fn start(&self) -> AlpResult<()> {
+        alp_call!(
+            self.lib, "AlpProjStart", AlpProjStartFn;
+            self.dev.id, self.id
+        )
+    }
+
+    pub fn set_cycles(&self, cycles: usize) -> AlpResult<()> {
+        self.set_control(Control::SeqRepeat, cycles as c_long)
     }
 
     pub fn set_picture_time(&self, time_us: usize) -> AlpResult<()> {
