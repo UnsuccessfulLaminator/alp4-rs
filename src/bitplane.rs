@@ -1,4 +1,4 @@
-use std::ops::{Range, Deref, DerefMut};
+use std::ops::{Range, Deref, DerefMut, Index};
 
 
 
@@ -35,6 +35,21 @@ impl<D: AsRef<[u8]>> Bitplanes<D> {
         let (byte_idx, bit_idx) = self.calc_indices(plane, x, y);
 
         (self.data.as_ref()[byte_idx] & 1 << bit_idx) > 0
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        self.data.as_ref()
+    }
+
+    pub fn to_owned(&self) -> Bitplanes<Vec<u8>> {
+        Bitplanes {
+            width: self.width,
+            height: self.height,
+            planes: self.planes,
+            plane_stride: self.plane_stride,
+            row_stride: self.row_stride,
+            data: self.as_slice().to_vec()
+        }
     }
 }
 
@@ -79,11 +94,49 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> Bitplanes<D> {
         Bitplanes {
             width: self.width,
             height: self.height,
-            planes: 1,
+            planes: range.end-range.start,
             plane_stride: self.plane_stride,
             row_stride: self.row_stride,
             data: &mut self.data.as_mut()[start..end]
         }
+    }
+
+    pub fn swap_planes(&mut self, p0: usize, p1: usize) {
+        if p0 == p1 { panic!("cannot swap plane with itself"); }
+
+        let (p0, p1) = (p0.min(p1), p0.max(p1));
+        let split = p1*self.plane_stride;
+        let (data1, data2) = self.data.as_mut().split_at_mut(split);
+        let start = p0*self.plane_stride;
+        let end = start+self.plane_stride;
+
+        data1[start..end].swap_with_slice(&mut data2[..self.plane_stride]);
+    }
+
+    pub fn split_at_plane(&mut self, p: usize)
+    -> (Bitplanes<&mut [u8]>, Bitplanes<&mut [u8]>) {
+        let split = p*self.plane_stride;
+        let (d0, d1) = self.data.as_mut().split_at_mut(split);
+
+        let p0 = Bitplanes {
+            width: self.width,
+            height: self.height,
+            planes: p,
+            plane_stride: self.plane_stride,
+            row_stride: self.row_stride,
+            data: d0
+        };
+        
+        let p1 = Bitplanes {
+            width: self.width,
+            height: self.height,
+            planes: self.planes-p,
+            plane_stride: self.plane_stride,
+            row_stride: self.row_stride,
+            data: d1
+        };
+
+        (p0, p1)
     }
 }
 
@@ -122,5 +175,14 @@ impl<D: AsRef<[u8]>> Deref for Bitplanes<D> {
 impl<D: AsRef<[u8]> + AsMut<[u8]>> DerefMut for Bitplanes<D> {
     fn deref_mut(&mut self) -> &mut [u8] {
         self.data.as_mut()
+    }
+}
+
+impl<D: AsRef<[u8]>> Index<[usize; 3]> for Bitplanes<D> {
+    type Output = bool;
+
+    fn index(&self, idx: [usize; 3]) -> &bool {
+        if self.get(idx[0], idx[1], idx[2]) { &true }
+        else { &false }
     }
 }
