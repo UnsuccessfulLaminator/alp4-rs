@@ -83,6 +83,43 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> Bitplanes<D> {
         }
     }
 
+    pub fn copy_from<O: AsRef<[u8]>>(&mut self, other: &Bitplanes<O>) {
+        if self.planes != other.planes { panic!("different number of planes"); }
+        if self.width != other.width { panic!("different plane widths"); }
+        if self.height != other.height { panic!("different plane heights"); }
+
+        let dst = self.data.as_mut();
+        let src = other.as_slice();
+
+        if self.plane_stride == other.plane_stride
+        && self.row_stride == other.row_stride {
+            dst.copy_from_slice(src);
+        }
+        else if self.row_stride == other.row_stride {
+            let len = self.row_stride*self.height;
+
+            dst.chunks_mut(self.plane_stride)
+                .zip(src.chunks(other.plane_stride))
+                .for_each(|(dst_plane, src_plane)| {
+                    dst_plane[..len].copy_from_slice(&src_plane[..len])
+                });
+        }
+        else {
+            let len = (self.width+7)/8;
+
+            dst.chunks_mut(self.plane_stride)
+                .zip(src.chunks(other.plane_stride))
+                .for_each(|(dst_plane, src_plane)| {
+                    dst_plane.chunks_mut(self.row_stride)
+                        .zip(src_plane.chunks(other.row_stride))
+                        .take(self.height)
+                        .for_each(|(dst_row, src_row)| {
+                            dst_row[..len].copy_from_slice(&src_row[..len]);
+                        })
+                });
+        }
+    }
+
     pub fn plane(&mut self, n: usize) -> Bitplanes<&mut [u8]> {
         self.plane_range(n..n+1)
     }
