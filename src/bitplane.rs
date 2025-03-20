@@ -175,6 +175,10 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> Bitplanes<D> {
 
         (p0, p1)
     }
+
+    pub fn as_slice_mut(&mut self) -> &mut [u8] {
+        self.data.as_mut()
+    }
 }
 
 impl Bitplanes<Vec<u8>> {
